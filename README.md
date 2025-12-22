@@ -21,12 +21,3 @@ A robust, real-time attendance tracking system built with Python. This project u
     * `QRCode` (Code generation)
 
 ---
-
-## 📂 Project Structure
-
-```text
-├── main.py              # The main scanning and logging script
-├── generator.py         # Script to generate QR codes for users
-├── attendance.csv       # The database where logs are stored
-├── master_list.csv      # Authorized users list
-└── qrcodes/             # Folder containing generated QR images
