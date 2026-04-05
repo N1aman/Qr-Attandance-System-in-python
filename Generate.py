@@ -1,20 +1,28 @@
-from MyQR import myqr
+import pandas as pd
+import qrcode
 import os
 
-f = open('students.txt','r')
-lines = f.read().split("\n")
-print(lines)
+# Load student data
+df = pd.read_csv("student.csv")
 
-for _ in range (0,len(lines)):
-    data = lines[_]
-    version,level,qr = myqr.run(
-        str(data),
-        level='H',
-        version=1,
-        picture="Bg.png",
-        colorized=True,
-        contrast=1.0,
-        brightness=1.0,
-        save_name = str(lines[_]+'.png'),
-        save_dir=os.getcwd()
-    )
+# Create folder to store QR codes
+folder = "Student_QR"
+os.makedirs(folder, exist_ok=True)
+
+# Generate QR for each student
+for index, row in df.iterrows():
+    reg_no = row["Reg No."]
+    name = row["Name"]
+
+
+
+    # Create QR (only Reg No.)
+    qr = qrcode.make(reg_no)
+
+    # Save QR image
+    filename = f"{folder}/{reg_no}.png"
+    qr.save(filename)
+
+    print(f"QR generated for {name} ({reg_no})")
+
+print("All QR codes generated successfully!")

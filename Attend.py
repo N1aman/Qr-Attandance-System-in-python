@@ -1,77 +1,52 @@
-from tkinter.constants import GROOVE, RAISED, RIDGE
+from tkinter.constants import GROOVE, RIDGE
 import cv2
 import pyzbar.pyzbar as pyzbar
 import time
 from datetime import date, datetime
 import tkinter as tk 
 from tkinter import Frame, ttk, messagebox
-from tkinter import *
-import os
 import pandas as pd
 from PIL import Image, ImageTk
 
-# Initialize the main window
+# ---------------- GUI PART ---------------- #
 window = tk.Tk()
-window.title('Attendance System ')
+window.title('Attendance System')
 window.geometry('900x600')  
 window.configure(bg='lightblue')
 
-# Variables for user input
 year = tk.StringVar()      
 branch = tk.StringVar()
 sec = tk.StringVar() 
 period = tk.StringVar()
 
-# GUI Title
-title = tk.Label(window, text="Attendance System Using Qr Code", bd=10, relief=tk.GROOVE, font=("times new roman", 40), bg="lavender", fg="black")
+title = tk.Label(window, text="Attendance System Using QR Code",
+                 bd=10, relief=tk.GROOVE,
+                 font=("times new roman", 30),
+                 bg="lavender", fg="black")
 title.pack(side=tk.TOP, fill=tk.X)
 
-# Manage Frame
 Manage_Frame = Frame(window, bg="lavender")
 Manage_Frame.place(x=0, y=80, width=480, height=530)
 
-# Input fields
-ttk.Label(window, text="Year", background="lavender", foreground="black", font=("Times New Roman", 15)).place(x=100, y=150)
-combo_search = ttk.Combobox(window, textvariable=year, width=10, font=("times new roman", 13), state='readonly')
-combo_search['values'] = ('1', '2', '3', '4') 
-combo_search.place(x=250, y=150)
+# Inputs
+ttk.Label(window, text="Year", background="lavender", font=("Times", 15)).place(x=100, y=150)
+ttk.Combobox(window, textvariable=year, values=('1','2','3','4'),
+             state='readonly').place(x=250, y=150)
 
-ttk.Label(window, text="Branch", background="lavender", foreground="black", font=("Times New Roman", 15)).place(x=100, y=200)
-combo_search = ttk.Combobox(window, textvariable=branch, width=10, font=("times new roman", 13), state='readonly')
-combo_search['values'] = ("CSE", "ECE", "EEE", "IT", "MECH", "ECM")
-combo_search.place(x=250, y=200)
+ttk.Label(window, text="Branch", background="lavender", font=("Times", 15)).place(x=100, y=200)
+ttk.Combobox(window, textvariable=branch,
+             values=("CSE","ECE","EEE","IT","MECH","ECM"),
+             state='readonly').place(x=250, y=200)
 
-ttk.Label(window, text="Section", background="lavender", foreground="black", font=("Times New Roman", 15)).place(x=100, y=250)
-combo_search = ttk.Combobox(window, textvariable=sec, width=10, font=("times new roman", 13), state='readonly')
-combo_search['values'] = ('A', 'B', 'C', 'D')
-combo_search.place(x=250, y=250)
+ttk.Label(window, text="Section", background="lavender", font=("Times", 15)).place(x=100, y=250)
+ttk.Combobox(window, textvariable=sec,
+             values=('A','B','C','D'),
+             state='readonly').place(x=250, y=250)
 
-ttk.Label(window, text="Period", background="lavender", foreground="black", font=("Times New Roman", 15)).place(x=100, y=300)
-combo_search = ttk.Combobox(window, textvariable=period, width=10, font=("times new roman", 13), state='readonly')
-combo_search['values'] = ('1', '2', '3', '4', '5', '6', '7')
-combo_search.place(x=250, y=300)
-
-# Right Frame (for image)
-right_frame = Frame(window, bg="white")
-right_frame.place(x=480, y=80, width=420, height=530)
-
-img_path = "QR_Attendance/bg.jpg"
-# Load and display image
-try:
-    # Replace "your_image.jpg" with your image file path
-    img = Image.open(img_path)
-    img = img.resize((400, 500), Image.LANCZOS)  # Resize to fit
-    img_tk = ImageTk.PhotoImage(img)
-    
-    img_label = tk.Label(right_frame, image=img_tk, bg="white")
-    img_label.image = img_tk  # Keep a reference
-    img_label.pack(padx=10, pady=10)
-    
-except Exception as e:
-    # Fallback if image can't be loaded
-    fallback_label = tk.Label(right_frame, text="Attendance System\n(Image Here)", 
-                             bg="white", fg="gray", font=("Times New Roman", 24))
-    fallback_label.pack(expand=True)
+ttk.Label(window, text="Period", background="lavender", font=("Times", 15)).place(x=100, y=300)
+ttk.Combobox(window, textvariable=period,
+             values=('1','2','3','4','5','6','7'),
+             state='readonly').place(x=250, y=300)
 
 def checkk():
     if year.get() and branch.get() and period.get() and sec.get():
@@ -79,66 +54,105 @@ def checkk():
     else:
         messagebox.showwarning("Warning", "All fields required!!")
 
-exit_button = tk.Button(window, width=13, text="Submit", font=("Times New Roman", 15), command=checkk, bd=2, relief=RIDGE)
-exit_button.place(x=300, y=380)
+tk.Button(window, text="Submit", font=("Times", 15),
+          command=checkk, bd=2, relief=RIDGE).place(x=300, y=380)
 
-# Start the Tkinter main loop
 window.mainloop()
 
-# Start video capture
+# ---------------- DATA PART ---------------- #
+
+# Load student database - Ensure student.csv exists in the folder
+try:
+    student_df = pd.read_csv("student.csv")
+    student_dict = dict(zip(student_df["Reg No."], student_df["Name"]))
+except FileNotFoundError:
+    print("Error: student.csv not found! Please create it with 'Reg No.' and 'Name' columns.")
+    exit()
+
 cap = cv2.VideoCapture(0)
 names = []
+
 today = date.today()
 d = today.strftime("%b-%d-%Y")
 
-# Create a DataFrame to store attendance data
-attendance_data = pd.DataFrame(columns=["Reg No.", "Class & Sec", "Year", "Period", "In Time"])
+attendance_data = pd.DataFrame(columns=[
+    "Reg No.", "Name", "Class & Sec", "Year", "Period", "In Time"
+])
 
-def enterData(z):   
-    if z not in names:
+# ---------------- FUNCTIONS ---------------- #
+
+def enterData(reg_no):   
+    global attendance_data
+    if reg_no not in names:
         it = datetime.now()
-        names.append(z)
+        names.append(reg_no)
         intime = it.strftime("%H:%M:%S")
-        
-        # Add data to DataFrame
-        global attendance_data
+
+        student_name = student_dict.get(reg_no, "Unknown Student")
+
         new_entry = pd.DataFrame({
-            "Reg No.": [z],
+            "Reg No.": [reg_no],
+            "Name": [student_name],
             "Class & Sec": [f"{branch.get()}-{sec.get()}"],
             "Year": [year.get()],
             "Period": [period.get()],
             "In Time": [intime]
         })
-        attendance_data = pd.concat([attendance_data, new_entry], ignore_index=True)
-        
-        # Save to Excel file (overwrites each time)
-        attendance_data.to_excel(d + '.xlsx', index=False)
-        
-    return names
 
-print('Reading...')
+        attendance_data = pd.concat([attendance_data, new_entry], ignore_index=True)
+        # Using .xlsx might require 'openpyxl' installed: pip install openpyxl
+        attendance_data.to_excel(d + '.xlsx', index=False)
+        print(f"{student_name} marked present")
+
+def extract_id(data):
+    data = data.decode('utf-8')
+    # If QR contains URL → extract ID
+    if data.startswith("http"):
+        data = data.split("/")[-1]
+    return data
 
 def checkData(data):
-    data = data.decode('utf-8')  # Convert bytes to string
-    if data in names:
-        print('Already Present')
+    reg_no = extract_id(data)
+    if reg_no in names:
+        print(f"ID {reg_no}: Already Present")
     else:
-        print(f'\n{len(names)+1}\nPresent...')
-        enterData(data)
+        print(f"Attendance Count: {len(names)+1}")
+        enterData(reg_no)
+
+# ---------------- CAMERA LOOP ---------------- #
+
+print("Scanning QR... Press 'g' to stop")
 
 while True:
-    _, frame = cap.read()         
-    decodedObjects = pyzbar.decode(frame)
-    for obj in decodedObjects:
-        checkData(obj.data)
-        time.sleep(1)
-       
-    cv2.imshow("Frame", frame)
+    ret, frame = cap.read()
 
+    # SAFETY CHECK: If the camera fails to return a frame, skip this loop iteration
+    if not ret or frame is None:
+        continue
+
+    decodedObjects = pyzbar.decode(frame)
+
+    for obj in decodedObjects:
+        # Visual feedback: Draw a box around the QR code
+        (x, y, w, h) = obj.rect
+        cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+        
+        checkData(obj.data)
+        
+        # Short pause to prevent scanning the same code 100 times per second
+        # We show the frame FIRST so the window doesn't look frozen
+        cv2.imshow("QR Scanner", frame)
+        cv2.waitKey(1000) 
+
+    cv2.imshow("QR Scanner", frame)
+
+    # Press 'g' to stop
     if cv2.waitKey(1) & 0xFF == ord('g'):
-        cv2.destroyAllWindows()
         break
 
-# Final save when exiting
+cap.release()
+cv2.destroyAllWindows()
+
+# Final save to ensure data integrity
 attendance_data.to_excel(d + '.xlsx', index=False)
-print("Attendance data saved to Excel.")
+print(f"Attendance saved successfully to {d}.xlsx!")
